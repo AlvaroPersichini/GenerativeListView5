@@ -149,7 +149,6 @@ Public Class CatiaDataExtractor
 
         Dim docPrincipal As INFITF.Document = oApp.ActiveDocument
 
-        Dim oNewWindow As INFITF.Window
 
         Dim oOriginalWindow As INFITF.Window
 
@@ -173,7 +172,7 @@ Public Class CatiaDataExtractor
             ' en caso de que sí sea root, hace "NewWindow()"
         Else
             oOriginalWindow = oApp.ActiveWindow
-            oNewWindow = oOriginalWindow.NewWindow()
+            'oNewWindow = oOriginalWindow.NewWindow()
 
 
 
