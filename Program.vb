@@ -1,5 +1,6 @@
-﻿Module Program
-
+﻿Option Explicit On
+Option Strict On
+Module Program
 
     Sub Main()
 

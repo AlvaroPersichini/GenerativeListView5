@@ -149,7 +149,7 @@ Public Class CatiaDataExtractor
 
         Dim docPrincipal As INFITF.Document = oApp.ActiveDocument
 
-        Dim oNewWindow As INFITF.Window = Nothing
+        Dim oNewWindow As INFITF.Window
 
         Dim oOriginalWindow As INFITF.Window
 
