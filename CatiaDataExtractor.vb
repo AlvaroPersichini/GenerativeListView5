@@ -35,7 +35,7 @@ Public Class CatiaDataExtractor
         AddProductRow(oRootProduct, table, 0, folderPath)
 
         ' Recorrer la estructura del ensamble recursivamente
-        ' ProcesarHijosRecursivo(oRootProduct, table, 1, folderPath)
+        ProcesarHijosRecursivo(oRootProduct, table, 1, folderPath)
 
         Return table
 
@@ -53,7 +53,6 @@ Public Class CatiaDataExtractor
         Dim row As DataRow = table.NewRow()
 
         Dim snapshot = TakeSnapshot(oProduct, folderPath, level)
-
 
         ' Bounding Box
         row("DimX") = snapshot.dimX
@@ -82,7 +81,7 @@ Public Class CatiaDataExtractor
 
 
         ' Físicas
-        ' row("Material") = materialName
+        'row("Material") = materialName
         'row("Mass_kg") = inertia.Mass
         'row("Volume_m3") = inertia.Volume
         'row("SurfaceArea_m2") = inertia.Area
@@ -102,9 +101,9 @@ Public Class CatiaDataExtractor
                                    level As Integer,
                                    folderPath As String)
 
-        For Each oProduct In oProduct.Products
+        For Each oProd As ProductStructureTypeLib.Product In oProduct.Products
 
-            Dim childProduct As ProductStructureTypeLib.Product = oProduct
+            Dim childProduct As ProductStructureTypeLib.Product = oProd
 
             ' Si la pieza ya existe en la lista, acumulamos la cantidad
 
@@ -133,12 +132,6 @@ Public Class CatiaDataExtractor
 
 
 
-
-
-
-
-
-
     Private Function TakeSnapshot(oProd As ProductStructureTypeLib.Product, folder As String, level As Integer) As (finalFileName As String, dimX As Double, dimY As Double, dimZ As Double)
 
         Dim safePartNumber As String = CleanFileName(oProd.PartNumber)
@@ -149,10 +142,9 @@ Public Class CatiaDataExtractor
 
         Dim docPrincipal As INFITF.Document = oApp.ActiveDocument
 
+        Dim docSubProducto As INFITF.Document = Nothing
 
-        Dim oOriginalWindow As INFITF.Window
-
-        ' Acá maneja el root, porque si es root hace "NewWindow()" y si no es root hace "open in new window"
+        ' Acá maneja el root
 
         If level <> 0 Then
 
@@ -160,33 +152,27 @@ Public Class CatiaDataExtractor
             oSelection.Clear()
             oSelection.Add(oProd)
             oApp.StartCommand("Open in New Window")
+            Threading.Thread.Sleep(200)
             oApp.RefreshDisplay = True
 
-            ' Verificar si la nueva ventana realmente se abrió o no
-            ' Si no se abrió, significa que el componente es un "Component" o un "Reference Product" y no tiene un documento asociado.
-            If oApp.ActiveDocument Is docPrincipal Then
+
+
+            If (CType(oProd.ReferenceProduct.Parent, INFITF.Document) Is docPrincipal) Then
                 oSelection.Clear()
                 Return (String.Empty, 0.0, 0.0, 0.0)
             End If
 
+            docSubProducto = oApp.ActiveDocument
+
             ' en caso de que sí sea root, hace "NewWindow()"
         Else
-            oOriginalWindow = oApp.ActiveWindow
-            'oNewWindow = oOriginalWindow.NewWindow()
-
-
+            ' oOriginalWindow = oApp.ActiveWindow
 
         End If
-
-        ' creo que esta linea es redundante, porque cuando se abre una ventana nueva,
-        ' ya sea con "NewWindow()" o con "Open in New Window",
-        ' la ventana activa pasa a ser la nueva ventana. Pero por las dudas, la dejo.
-        ' aunque en la linea siguiente uso oCurrentWindow para referenciar el oSpecWindow.
 
 
 
         Dim oSpecsWindow As INFITF.SpecsAndGeomWindow = CType(oApp.ActiveWindow, INFITF.SpecsAndGeomWindow)
-
         Dim oViewer As INFITF.Viewer3D = CType(oSpecsWindow.Viewers.Item(1), INFITF.Viewer3D)
 
 
@@ -223,6 +209,7 @@ Public Class CatiaDataExtractor
         oApp.RefreshDisplay = True
 
 
+
         ' acá toma la captura.
         oViewer.CaptureToFile(INFITF.CatCaptureFormat.catCaptureFormatJPEG, finalFileName)
 
@@ -233,33 +220,51 @@ Public Class CatiaDataExtractor
         oSpecsWindow.Layout = INFITF.CatSpecsAndGeomWindowLayout.catWindowSpecsAndGeom
 
 
+        ' Todo este quilombo es para que la vetana se vuelva a maximizar.
+        ' No sé por qué no se maximiza con el comando "Maximize"
+        oApp.StartCommand("Minimize")
+        Threading.Thread.Sleep(300)
+        oViewer.Reframe()
+        oViewer.Update()
+        oApp.RefreshDisplay = True
+        oApp.StartCommand("Maximize")
+        Threading.Thread.Sleep(300)
+        oViewer.Reframe()
+        oViewer.Update()
+        oApp.RefreshDisplay = True
+
+
+        ' al querer calcular inercia de un part que solo tiene alambrico y no tiene volumen, tira error.
+        ' Porque no hay volumen para calcular inercia.
+        '---------------------------------------------------------------------
+        'Dim oInertia As SPATypeLib.Inertia = CType(oProd.GetTechnologicalObject("Inertia"), SPATypeLib.Inertia)
+        'Dim bBox As Array = Array.CreateInstance(GetType(Object), 9)
+
+        'MsgBox(oProd.PartNumber)
+
+        'oInertia.GetPrincipalAxes(bBox)
+        'Dim dimY As Double = CDbl(bBox.GetValue(3)) - CDbl(bBox.GetValue(2))
+        'Dim dimZ As Double = CDbl(bBox.GetValue(5)) - CDbl(bBox.GetValue(4))
+        'Dim dimX As Double = CDbl(bBox.GetValue(1)) - CDbl(bBox.GetValue(0))
+        Dim dimY As Double
+        Dim dimZ As Double
+        Dim dimX As Double
 
         '---------------------------------------------------------------------
-        Dim oInertia As SPATypeLib.Inertia = CType(oProd.GetTechnologicalObject("Inertia"), SPATypeLib.Inertia)
-
-        Dim bBox As Array = Array.CreateInstance(GetType(Object), 9)
-
-        oInertia.GetPrincipalAxes(bBox)
+        'Dim oReference As INFITF.Reference = oProd.CreateReferenceFromName("")
 
 
-        Dim dimX As Double = CDbl(bBox.GetValue(1)) - CDbl(bBox.GetValue(0))
-        Dim dimY As Double = CDbl(bBox.GetValue(3)) - CDbl(bBox.GetValue(2))
-        Dim dimZ As Double = CDbl(bBox.GetValue(5)) - CDbl(bBox.GetValue(4))
 
-
-        Dim oReference As INFITF.Reference = oProd.CreateReferenceFromName("")
+        ' Cerrar el documento si no es el root
+        If level <> 0 AndAlso docSubProducto IsNot Nothing Then
+            docSubProducto.Close()
+            oApp.RefreshDisplay = True
+        End If
 
 
         Return (finalFileName, dimX, dimY, dimZ)
 
-
     End Function
-
-
-
-
-
-
 
 
 

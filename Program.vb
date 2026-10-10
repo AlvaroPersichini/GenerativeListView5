@@ -32,11 +32,21 @@ Module Program
         Dim oDataTable As DataTable = oCatiaDataextractor.ExtractData(oProduct, folderPath)
 
 
-        Dim row As DataRow = oDataTable.Rows(0)
-        Console.WriteLine($"DimX: {row("DimX")}")
-        Console.WriteLine($"DimY: {row("DimY")}")
-        Console.WriteLine($"DimZ: {row("DimZ")}")
+        ' Imprimir el resumen con columnas alineadas
+        Console.WriteLine(Environment.NewLine & "--- Listado de Productos, Niveles y Cantidades ---")
 
+        ' Cabecera de la tabla
+        Console.WriteLine($"{"PartNumber",-30} | {"Nivel",-6} | {"Cantidad",-8}")
+        Console.WriteLine(New String("-"c, 52))
+
+        ' Filas de datos
+        For Each row As DataRow In oDataTable.Rows
+            Dim partNumber As String = row("PartNumber").ToString()
+            Dim level As Integer = CInt(row("Level"))
+            Dim quantity As Integer = CInt(row("Quantity"))
+
+            Console.WriteLine($"{partNumber,-30} | {level,-6} | {quantity,-8}")
+        Next
 
 
 
